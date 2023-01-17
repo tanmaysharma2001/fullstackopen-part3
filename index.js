@@ -6,9 +6,9 @@ const app = express();
 // without json parser the type of the request body will be undefined.
 app.use(express.json());
 
-var d = new Date(Date.now());
+var morgan = require("morgan");
 
-var currentdate = new Date();
+var d = new Date(Date.now());
 
 let persons = [
   {
@@ -33,28 +33,45 @@ let persons = [
   },
 ];
 
-app.get("/", (request, response) => {
-  response.send("<h1>ajksndkjasd</h1>");
+app.use(morgan("tiny"));
+
+app.use(
+  morgan((tokens, req, res) => {
+    return [
+      tokens.method(req, res),
+      tokens.url(req, res),
+      tokens.status(req, res),
+      tokens.res(req, res, "content-length"),
+      "-",
+      tokens["response-time"](req, res),
+      "ms",
+      JSON.stringify(req.body),
+    ].join(" ");
+  })
+);
+
+app.get("/", function (req, res) {
+  res.send("<h1>ajksndkjasd</h1>");
 });
 
-app.get("/api/persons", (request, response) => {
-  response.json(persons);
+app.get("/api/persons", function (req, res) {
+  res.json(persons);
 });
 
-app.get("/api/persons/:id", (request, response) => {
+app.get("/api/persons/:id", function (req, res) {
   const id = Number(request.params.id);
 
   const person = persons.find((person) => person.id === id);
 
   if (person) {
-    response.json(person);
+    res.json(person);
   } else {
-    response.status(204).end();
+    res.status(204).end();
   }
 });
 
-app.get("/info", (request, response) => {
-  response.send(`
+app.get("/info", function (req, res) {
+  res.send(`
         <p>Phonebook has info for ${persons.length} people</p>
         <p>${d.toString()}</p>
     `);
@@ -68,7 +85,7 @@ app.delete("/api/persons/:id", (request, response) => {
   response.status(204).end();
 });
 
-app.post("/api/persons", (request, response) => {
+app.post("/api/persons", function (request, response) {
   const body = request.body;
 
   if (Object.keys(body).length === 0) {
@@ -104,6 +121,12 @@ app.post("/api/persons", (request, response) => {
 
   response.json(newPerson);
 });
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint " });
+};
+
+app.use(unknownEndpoint);
 
 const PORT = 3001;
 app.listen(PORT, () => {
