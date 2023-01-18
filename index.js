@@ -3,8 +3,10 @@ const { response } = require("express");
 const express = require("express");
 const app = express();
 
-const cors = require('cors')
-app.use(cors())
+app.use(express.static("build"));
+
+const cors = require("cors");
+app.use(cors());
 
 // without json parser the type of the request body will be undefined.
 app.use(express.json());
