@@ -17,29 +17,6 @@ var morgan = require("morgan");
 
 var d = new Date(Date.now());
 
-let persons = [
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
-
 app.use(morgan("tiny"));
 
 app.use(
@@ -68,7 +45,6 @@ app.get("/api/persons", function (req, res) {
 });
 
 app.get("/api/persons/:id", function (req, res, next) {
-
   Person.findById(req.params.id)
     .then((person) => {
       if (person) {
@@ -97,7 +73,7 @@ app.delete("/api/persons/:id", (request, response) => {
     .catch((error) => next(error));
 });
 
-app.post("/api/persons", function (request, response) {
+app.post("/api/persons", function (request, response, next) {
   const body = request.body;
 
   if (Object.keys(body).length === 0) {
@@ -120,17 +96,22 @@ app.post("/api/persons", function (request, response) {
     number: body.number,
   });
 
-  if (persons.find((person) => person.name === newPersonName)) {
-    Person.findByIdAndUpdate(request.params.id, newPerson, { new: true })
-      .then((updatedPerson) => {
-        response.json(updatedPerson);
-      })
-      .catch((error) => next(error));
-  } else {
-    newPerson.save().then((savedPerson) => {
-      response.json(savedPerson);
-    });
-  }
+  Person.find({ name: newPerson.name }).then((result) => {
+    if (result.length === 0) {
+      newPerson
+        .save()
+        .then((savedPerson) => {
+          response.json(savedPerson);
+        })
+        .catch((error) => next(error));
+    } else {
+      Person.findByIdAndUpdate(request.params.id, newPerson, { new: true })
+        .then((updatedPerson) => {
+          response.json(updatedPerson);
+        })
+        .catch((error) => next(error));
+    }
+  });
 });
 
 app.put("/api/persons/:id", (request, response, next) => {
@@ -159,6 +140,8 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === "CastError") {
     return response.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return response.status(400).json({ error: error.message });
   }
   next(error);
 };
